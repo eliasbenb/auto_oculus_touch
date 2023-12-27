@@ -52,6 +52,9 @@ extern "C"
 	// Initialise the Oculus session
 	__declspec(dllexport) unsigned int initOculus()
 	{
+		if (isConnected() == 0)
+			return 0;
+
 		memset(&g_touchState, 0, sizeof(ovrInputState));
 		memset(&g_touchStateLast, 0, sizeof(ovrInputState));
 		memset(&g_trackingState, 0, sizeof(ovrTrackingState));
@@ -76,21 +79,6 @@ extern "C"
 
 		result = ovr_Create(&g_HMD, &g_luid);
 		return g_HMD ? 1 : 0;
-	}
-
-	// Destroy the Oculus session
-	__declspec(dllexport) void destroyOculus()
-	{
-		if (g_HMD)
-		{
-			if (g_vjoy > -1)
-			{
-				RelinquishVJD(g_vjoy);
-				g_vjoy = -1;
-			}
-			ovr_Destroy(g_HMD);
-		}
-		ovr_Shutdown();
 	}
 
 	// Poll the current state of the controllers.
@@ -377,15 +365,9 @@ extern "C"
 		return 0;
 	}
 
-	__declspec(dllexport) unsigned int shouldShutdown()
+	__declspec(dllexport) unsigned int isConnected()
 	{
-		if (g_HMD)
-		{
-			ovrSessionStatus status;
-			ovr_GetSessionStatus(g_HMD, &status);
-			return status.ShouldQuit;
-		}
-		return 0;
+		return ovr_Detect(0).IsOculusHMDConnected;
 	}
 
 	// Retrieve the current trigger value
