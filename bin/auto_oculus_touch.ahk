@@ -162,7 +162,7 @@ Wearing()
 	return DllCall(Func_isWearing)
 }
 
-shouldShutdown()
+ShouldShutdown()
 {
 	global Func_shouldShutdown
 	return DllCall(Func_shouldShutdown)
