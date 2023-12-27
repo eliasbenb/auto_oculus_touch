@@ -102,6 +102,7 @@ else
 }
 
 Func_initOculus := DllCall("GetProcAddress", "Ptr", AOTModule, "AStr", "initOculus", "Ptr")
+Func_resetOculus := DllCall("GetProcAddress", "Ptr", AOTModule, "AStr", "resetOculus", "Ptr")
 Func_poll := DllCall("GetProcAddress", "Ptr", AOTModule, "AStr", "poll", "Ptr")
 Func_isWearing := DllCall("GetProcAddress", "Ptr", AOTModule, "AStr", "isWearing", "Ptr")
 Func_isConnected := DllCall("GetProcAddress", "Ptr", AOTModule, "AStr", "isConnected", "Ptr")
@@ -141,6 +142,12 @@ InitOculus()
 {
 	global Func_initOculus
 	return DllCall(Func_initOculus, "UInt")
+}
+
+ResetOculus()
+{
+	global Func_resetOculus
+	DllCall(Func_resetOculus)
 }
 
 Poll()

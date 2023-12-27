@@ -52,7 +52,7 @@ extern "C"
 	// Initialise the Oculus session
 	__declspec(dllexport) unsigned int initOculus()
 	{
-		if (isConnected() == 0)
+		if (ovr_Detect(0).IsOculusHMDConnected == 0)
 			return 0;
 
 		memset(&g_touchState, 0, sizeof(ovrInputState));
@@ -79,6 +79,32 @@ extern "C"
 
 		result = ovr_Create(&g_HMD, &g_luid);
 		return g_HMD ? 1 : 0;
+	}
+
+	// reset state
+	__declspec(dllexport) void resetOculus()
+	{
+		memset(&g_touchState, 0, sizeof(ovrInputState));
+		memset(&g_touchStateLast, 0, sizeof(ovrInputState));
+		memset(&g_trackingState, 0, sizeof(ovrTrackingState));
+		g_frequency[0] = 1; // 1 = 320Hz
+		g_frequency[1] = 1; // 1 = 320Hz
+		g_amplitude[0] = 0;
+		g_amplitude[1] = 0;
+		g_identityAngle[0] = 0;
+		g_identityAngle[1] = 0;
+
+		if (g_HMD)
+		{
+			if (g_vjoy > -1)
+			{
+				RelinquishVJD(g_vjoy);
+				g_vjoy = -1;
+			}
+			ovr_Destroy(g_HMD);
+			g_HMD = 0;
+		}
+		ovr_Shutdown();
 	}
 
 	// Poll the current state of the controllers.
