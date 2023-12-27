@@ -377,13 +377,13 @@ extern "C"
 		return 0;
 	}
 
-	__declspec(dllexport) unsigned int isPresent()
+	__declspec(dllexport) unsigned int shouldShutdown()
 	{
 		if (g_HMD)
 		{
 			ovrSessionStatus status;
 			ovr_GetSessionStatus(g_HMD, &status);
-			return status.HmdPresent;
+			return status.ShouldQuit;
 		}
 		return 0;
 	}

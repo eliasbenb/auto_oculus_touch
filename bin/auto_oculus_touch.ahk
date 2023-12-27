@@ -105,7 +105,7 @@ Func_initOculus := DllCall("GetProcAddress", "Ptr", AOTModule, "AStr", "initOcul
 Func_destroyOculus := DllCall("GetProcAddress", "Ptr", AOTModule, "AStr", "destroyOculus", "Ptr")
 Func_poll := DllCall("GetProcAddress", "Ptr", AOTModule, "AStr", "poll", "Ptr")
 Func_isWearing := DllCall("GetProcAddress", "Ptr", AOTModule, "AStr", "isWearing", "Ptr")
-Func_isPresent := DllCall("GetProcAddress", "Ptr", AOTModule, "AStr", "isPresent", "Ptr")
+Func_shouldShutdown := DllCall("GetProcAddress", "Ptr", AOTModule, "AStr", "shouldShutdown", "Ptr")
 Func_isPressed := DllCall("GetProcAddress", "Ptr", AOTModule, "AStr", "isPressed", "Ptr")
 Func_isReleased := DllCall("GetProcAddress", "Ptr", AOTModule, "AStr", "isReleased", "Ptr")
 Func_isDown := DllCall("GetProcAddress", "Ptr", AOTModule, "AStr", "isDown", "Ptr")
@@ -162,10 +162,10 @@ Wearing()
 	return DllCall(Func_isWearing)
 }
 
-Present()
+shouldShutdown()
 {
-	global Func_isPresent
-	return DllCall(Func_isPresent)
+	global Func_shouldShutdown
+	return DllCall(Func_shouldShutdown)
 }
 
 IsPressed(button)
