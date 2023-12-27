@@ -2,13 +2,14 @@
 // AutoTouch - Helper library to provide AutoHotKey with Oculus Touch state.
 // Copyright (C) 2017 Kojack (rajetic@gmail.com)
 //
-// AutoTouch is released under the MIT License  
+// AutoTouch is released under the MIT License
 // https://opensource.org/licenses/MIT
 ///////////////////////////////////////////////////////////////////////////////
 
 #define ROBUST
 #include "stdafx.h"
 #include "oculus/OVR_CAPI.h"
+#include "oculus/Extras/OVR_CAPI_Util.h"
 #include "cmath"
 #include "oculus/Extras/OVR_Math.h"
 #include "vjoy/public.h"
@@ -16,39 +17,42 @@
 #include "kf_time.h"
 
 // Global Variables
-ovrSession			g_HMD = 0;	// The session of the headset
+ovrSession g_HMD = 0; // The session of the headset
 
 // Button and touch states
-ovrInputState		g_touchStateLast;
-ovrInputState		g_touchState;
+ovrInputState g_touchStateLast;
+ovrInputState g_touchState;
 
 // Vibration
-unsigned char		g_sampleBuffer[2][24];		// Buffer used to hold touch vibration patterns
-unsigned char		g_amplitude[2] = { 0, 0 };		// Current amplitude used to generate touch patterns
-int					g_frequency[2] = { 1, 1 };		// Current frequency used to generate touch patterns
-//bool				g_oneShot[2] = { false, false };		// If true, amplitude is reset to 0 after filling the buffer once
+unsigned char g_sampleBuffer[2][24];   // Buffer used to hold touch vibration patterns
+unsigned char g_amplitude[2] = {0, 0}; // Current amplitude used to generate touch patterns
+int g_frequency[2] = {1, 1};		   // Current frequency used to generate touch patterns
+// bool				g_oneShot[2] = { false, false };		// If true, amplitude is reset to 0 after filling the buffer once
 
-double			g_vibrateTime[2] = { 0,0 };
+double g_vibrateTime[2] = {0, 0};
 
 // Angle and position tracking
-ovrTrackingState	g_trackingState;		// Touch and head tracking data
-float				g_identityAngle[3] = { 0,0,0 };	// Tracked angle that is reported as 0 degrees to the user (set by resetFacing)
-ovrVector3f			g_xAxis = { 1,0,0 };	// X axis of reset tracking coordinate system
-ovrVector3f			g_yAxis = { 0,1,0 };	// Y axis of reset tracking coordinate system
-ovrVector3f			g_zAxis = { 0,0,1 };	// Z axis of reset tracking coordinate system
-ovrVector3f			g_origin = { 0,0,0 };	// Origin of reset tracking coordinate system
+ovrTrackingState g_trackingState;	  // Touch and head tracking data
+float g_identityAngle[3] = {0, 0, 0}; // Tracked angle that is reported as 0 degrees to the user (set by resetFacing)
+ovrVector3f g_xAxis = {1, 0, 0};	  // X axis of reset tracking coordinate system
+ovrVector3f g_yAxis = {0, 1, 0};	  // Y axis of reset tracking coordinate system
+ovrVector3f g_zAxis = {0, 0, 1};	  // Z axis of reset tracking coordinate system
+ovrVector3f g_origin = {0, 0, 0};	  // Origin of reset tracking coordinate system
 
 // vJoy
-int				g_vjoy = -1;
-char			g_errorBuffer[1000];
+int g_vjoy = -1;
+char g_errorBuffer[1000];
 
 kf::Time g_timer;
 long long g_lastTime = 0;
 
 // Functions exported to AutoHotkey
 extern "C"
-{
-	__declspec(dllexport) void applyVibration(unsigned int controller, float frequency, float amplitude, double length);
+	__declspec(dllexport) int detect()
+	{
+		ovrDetectResult result = ovr_Detect(0);
+		return result.IsOculusServiceRunning && result.IsOculusHMDConnected;
+	}
 
 	// Initialise the Oculus session
 	__declspec(dllexport) int initOculus()
@@ -56,8 +60,8 @@ extern "C"
 		memset(&g_touchState, 0, sizeof(ovrInputState));
 		memset(&g_touchStateLast, 0, sizeof(ovrInputState));
 		memset(&g_trackingState, 0, sizeof(ovrTrackingState));
-		g_frequency[0] = 1;	// 1 = 320Hz
-		g_frequency[1] = 1;	// 1 = 320Hz
+		g_frequency[0] = 1; // 1 = 320Hz
+		g_frequency[1] = 1; // 1 = 320Hz
 		g_amplitude[0] = 0;
 		g_amplitude[1] = 0;
 		g_identityAngle[0] = 0;
@@ -86,8 +90,15 @@ extern "C"
 	{
 		if (g_HMD)
 		{
+			if (!detect())
+			{
+				ovr_Destroy(g_HMD);
+				ovr_Shutdown();
+				g_HMD = 0;
+				return;
+			}
 			g_touchStateLast = g_touchState;
-			ovr_GetInputState(g_HMD, ovrControllerType_Active , &g_touchState);
+			ovr_GetInputState(g_HMD, ovrControllerType_Active, &g_touchState);
 			g_trackingState = ovr_GetTrackingState(g_HMD, 0, false);
 
 			long long currentTime = g_timer.getTicks();
@@ -108,7 +119,7 @@ extern "C"
 			ovrHapticsPlaybackState state;
 			for (int controller = 0; controller < 2; ++controller)
 			{
-				ovr_GetControllerVibrationState(g_HMD, (ovrControllerType)((int)ovrControllerType_LTouch+controller), &state);
+				ovr_GetControllerVibrationState(g_HMD, (ovrControllerType)((int)ovrControllerType_LTouch + controller), &state);
 				if (state.SamplesQueued < 40 && g_amplitude[controller] > 0)
 				{
 					ovrHapticsBuffer haptics;
@@ -119,12 +130,19 @@ extern "C"
 				}
 			}
 		}
+		else
+		{
+			if (detect())
+			{
+				initOculus();
+			}
+		}
 	}
-	
+
 	// Initialise a vJoy device. Currently only a single device can be used by a single auto_oculus_touch script.
 	// device - index from 1 to the number of vJoy devices
 	// return - 0 if init failed, 1 if succeeded
-	__declspec(dllexport) char* initvJoy(unsigned int device)
+	__declspec(dllexport) char *initvJoy(unsigned int device)
 	{
 		sprintf_s(g_errorBuffer, "");
 		g_vjoy = -1;
@@ -136,7 +154,7 @@ extern "C"
 				VjdStat status = GetVJDStatus(device);
 				if (status == VJD_STAT_FREE)
 				{
-					if(AcquireVJD(device))
+					if (AcquireVJD(device))
 					{
 						g_vjoy = device;
 					}
@@ -144,9 +162,9 @@ extern "C"
 			}
 			else
 			{
-				
+
 				sprintf_s(g_errorBuffer, "vJoy version mismatch: DLL=%d SDK=%d", VerDll, VerDrv);
-				//MessageBox(NULL, buf, L"initvJoy", 0);
+				// MessageBox(NULL, buf, L"initvJoy", 0);
 				return g_errorBuffer;
 			}
 		}
@@ -173,7 +191,7 @@ extern "C"
 				value = -1.0f;
 			if (value > 1.0f)
 				value = 1.0f;
-			long v = long((value*0.5f + 0.5f) * 0x7999) + 1;
+			long v = long((value * 0.5f + 0.5f) * 0x7999) + 1;
 			SetAxis(v, g_vjoy, hid);
 		}
 	}
@@ -252,7 +270,7 @@ extern "C"
 		if (current >= threshold && last < threshold)
 		{
 			return 1;
-		} 
+		}
 		else if (current < threshold && last >= threshold)
 		{
 			return -1;
@@ -466,14 +484,14 @@ extern "C"
 		if (g_HMD)
 		{
 			OVR::Quatf q;
-			if(controller>=0 && controller<2)
+			if (controller >= 0 && controller < 2)
 				q = g_trackingState.HandPoses[controller].ThePose.Orientation;
 			else
 				q = g_trackingState.HeadPose.ThePose.Orientation;
 			float yaw, pitch, roll;
 			q.GetYawPitchRoll(&yaw, &pitch, &roll);
 			yaw -= g_identityAngle[controller];
-			yaw = fmod(yaw + 3.14159265, 3.14159265*2.0) - 3.14159265;
+			yaw = fmod(yaw + 3.14159265, 3.14159265 * 2.0) - 3.14159265;
 			return -yaw * (180.0 / 3.14159265);
 		}
 		return 0;
@@ -507,9 +525,10 @@ extern "C"
 			if (controller >= 0 && controller < 2)
 				q = g_trackingState.HandPoses[controller].ThePose.Orientation;
 			else
-				q = g_trackingState.HeadPose.ThePose.Orientation;			float yaw, pitch, roll;
+				q = g_trackingState.HeadPose.ThePose.Orientation;
+			float yaw, pitch, roll;
 			q.GetYawPitchRoll(&yaw, &pitch, &roll);
-			return -roll * (180.0/3.14159265);
+			return -roll * (180.0 / 3.14159265);
 		}
 		return 0;
 	}
@@ -582,20 +601,20 @@ extern "C"
 		float pitch, roll;
 		q.GetYawPitchRoll(&g_identityAngle[controller], &pitch, &roll);
 
-		//g_origin = g_trackingState.HandPoses[controller].ThePose.Position;
-		//float x = g_trackingState.HandPoses[controller].ThePose.Orientation.x;
-		//float y = g_trackingState.HandPoses[controller].ThePose.Orientation.y;
-		//float z = g_trackingState.HandPoses[controller].ThePose.Orientation.z;
-		//float w = g_trackingState.HandPoses[controller].ThePose.Orientation.w;
-		//g_xAxis.x = 1.0f - (2*y*y + 2*z*z);
-		//g_xAxis.y = 2*x*y - 2*w*z;
-		//g_xAxis.z = 2 * x*z + 2 * w*y;
-		//g_yAxis.x = 2 * x*y + 2 * w*z;
-		//g_yAxis.y = 1.0f - (2 * x*x + 2 * z*z);
-		//g_yAxis.z = 2 * y*z - 2 * w*x;
-		//g_zAxis.x = 2 * x*z - 2 * w*y;
-		//g_zAxis.y = 2 * y*z + 2 * w*x;
-		//g_zAxis.z = 1.0f - (2 * x*x + 2 * y*y);
+		// g_origin = g_trackingState.HandPoses[controller].ThePose.Position;
+		// float x = g_trackingState.HandPoses[controller].ThePose.Orientation.x;
+		// float y = g_trackingState.HandPoses[controller].ThePose.Orientation.y;
+		// float z = g_trackingState.HandPoses[controller].ThePose.Orientation.z;
+		// float w = g_trackingState.HandPoses[controller].ThePose.Orientation.w;
+		// g_xAxis.x = 1.0f - (2*y*y + 2*z*z);
+		// g_xAxis.y = 2*x*y - 2*w*z;
+		// g_xAxis.z = 2 * x*z + 2 * w*y;
+		// g_yAxis.x = 2 * x*y + 2 * w*z;
+		// g_yAxis.y = 1.0f - (2 * x*x + 2 * z*z);
+		// g_yAxis.z = 2 * y*z - 2 * w*x;
+		// g_zAxis.x = 2 * x*z - 2 * w*y;
+		// g_zAxis.y = 2 * y*z + 2 * w*x;
+		// g_zAxis.z = 1.0f - (2 * x*x + 2 * y*y);
 	}
 
 	__declspec(dllexport) void sendRawMouseMove(int x, int y, int z)
@@ -605,7 +624,7 @@ extern "C"
 		mi.mi.dx = x;
 		mi.mi.dy = y;
 		mi.mi.mouseData = z;
-		mi.mi.dwFlags = MOUSEEVENTF_MOVE | (z!=0?MOUSEEVENTF_WHEEL:0);
+		mi.mi.dwFlags = MOUSEEVENTF_MOVE | (z != 0 ? MOUSEEVENTF_WHEEL : 0);
 		mi.mi.dwExtraInfo = 0;
 		mi.mi.time = 0;
 		SendInput(1, (LPINPUT)&mi, sizeof(mi));
@@ -613,7 +632,7 @@ extern "C"
 
 	__declspec(dllexport) void sendRawMouseButtonDown(unsigned int button)
 	{
-		DWORD buttons[] = { MOUSEEVENTF_LEFTDOWN,MOUSEEVENTF_RIGHTDOWN,MOUSEEVENTF_MIDDLEDOWN };
+		DWORD buttons[] = {MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_MIDDLEDOWN};
 		if (button < 3)
 		{
 			INPUT mi;
@@ -629,7 +648,7 @@ extern "C"
 	}
 	__declspec(dllexport) void sendRawMouseButtonUp(unsigned int button)
 	{
-		DWORD buttons[] = { MOUSEEVENTF_LEFTUP,MOUSEEVENTF_RIGHTUP,MOUSEEVENTF_MIDDLEUP };
+		DWORD buttons[] = {MOUSEEVENTF_LEFTUP, MOUSEEVENTF_RIGHTUP, MOUSEEVENTF_MIDDLEUP};
 		if (button < 3)
 		{
 			INPUT mi;
@@ -645,7 +664,7 @@ extern "C"
 	}
 }
 
-BOOL APIENTRY DllMain(HMODULE hModule,	DWORD  ul_reason_for_call,	LPVOID lpReserved)
+BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
 {
 	switch (ul_reason_for_call)
 	{
