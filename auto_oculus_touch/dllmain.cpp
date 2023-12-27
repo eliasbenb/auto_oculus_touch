@@ -49,13 +49,13 @@ long long g_lastTime = 0;
 // Functions exported to AutoHotkey
 extern "C"
 {
-	__declspec(dllexport) int detect()
+	__declspec(dllexport) unsigned int detect()
 	{
-		return ovr_Detect(0).IsOculusHMDConnected;
+		return ovr_Detect(0).IsOculusHMDConnected ? 1 : 0;
 	}
-
+ 
 	// Initialise the Oculus session
-	__declspec(dllexport) int initOculus()
+	__declspec(dllexport) unsigned int initOculus()
 	{
 		memset(&g_touchState, 0, sizeof(ovrInputState));
 		memset(&g_touchStateLast, 0, sizeof(ovrInputState));
