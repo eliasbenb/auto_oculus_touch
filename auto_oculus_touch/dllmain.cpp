@@ -48,6 +48,7 @@ long long g_lastTime = 0;
 
 // Functions exported to AutoHotkey
 extern "C"
+{
 	__declspec(dllexport) int detect()
 	{
 		ovrDetectResult result = ovr_Detect(0);
