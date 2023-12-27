@@ -51,9 +51,9 @@ extern "C"
 {
 	__declspec(dllexport) unsigned int detect()
 	{
-		return ovr_Detect(0).IsOculusHMDConnected ? 1 : 0;
+		return ovr_Detect(0).IsOculusHMDConnected;
 	}
- 
+
 	// Initialise the Oculus session
 	__declspec(dllexport) unsigned int initOculus()
 	{
@@ -83,6 +83,21 @@ extern "C"
 		return g_HMD ? 1 : 0;
 	}
 
+	// Destroy the Oculus session
+	__declspec(dllexport) void destroyOculus()
+	{
+		if (g_HMD)
+		{
+			if (g_vjoy > -1)
+			{
+				RelinquishVJD(g_vjoy);
+				g_vjoy = -1;
+			}
+			ovr_Destroy(g_HMD);
+		}
+		ovr_Shutdown();
+	}
+
 	// Poll the current state of the controllers.
 	// This needs to be called at a regular rate for the rest of the functions to work (this one gathers the data they use).
 	// It also updates the vibration queues.
@@ -90,13 +105,6 @@ extern "C"
 	{
 		if (g_HMD)
 		{
-			if (!detect())
-			{
-				ovr_Destroy(g_HMD);
-				ovr_Shutdown();
-				g_HMD = 0;
-				return;
-			}
 			g_touchStateLast = g_touchState;
 			ovr_GetInputState(g_HMD, ovrControllerType_Active, &g_touchState);
 			g_trackingState = ovr_GetTrackingState(g_HMD, 0, false);
@@ -128,13 +136,6 @@ extern "C"
 					haptics.Samples = &g_sampleBuffer[controller];
 					ovr_SubmitControllerVibration(g_HMD, (ovrControllerType)((int)ovrControllerType_LTouch + controller), &haptics);
 				}
-			}
-		}
-		else
-		{
-			if (detect())
-			{
-				initOculus();
 			}
 		}
 	}
