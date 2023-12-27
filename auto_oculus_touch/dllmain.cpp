@@ -49,11 +49,6 @@ long long g_lastTime = 0;
 // Functions exported to AutoHotkey
 extern "C"
 {
-	__declspec(dllexport) unsigned int detect()
-	{
-		return ovr_Detect(0).IsOculusHMDConnected;
-	}
-
 	// Initialise the Oculus session
 	__declspec(dllexport) unsigned int initOculus()
 	{
@@ -378,6 +373,17 @@ extern "C"
 			ovrSessionStatus status;
 			ovr_GetSessionStatus(g_HMD, &status);
 			return status.HmdMounted;
+		}
+		return 0;
+	}
+
+	__declspec(dllexport) unsigned int isPresent()
+	{
+		if (g_HMD)
+		{
+			ovrSessionStatus status;
+			ovr_GetSessionStatus(g_HMD, &status);
+			return status.HmdPresent;
 		}
 		return 0;
 	}
