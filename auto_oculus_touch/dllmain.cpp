@@ -51,8 +51,7 @@ extern "C"
 {
 	__declspec(dllexport) int detect()
 	{
-		ovrDetectResult result = ovr_Detect(0);
-		return result.IsOculusServiceRunning && result.IsOculusHMDConnected;
+		return ovr_Detect(0).IsOculusHMDConnected;
 	}
 
 	// Initialise the Oculus session
