@@ -101,6 +101,7 @@ else
 	ExitApp
 }
 
+Func_detect := DllCall("GetProcAddress", "Ptr", AOTModule, "AStr", "detect", "Ptr")
 Func_initOculus := DllCall("GetProcAddress", "Ptr", AOTModule, "AStr", "initOculus", "Ptr")
 Func_poll := DllCall("GetProcAddress", "Ptr", AOTModule, "AStr", "poll", "Ptr")
 Func_isWearing := DllCall("GetProcAddress", "Ptr", AOTModule, "AStr", "isWearing", "Ptr")
@@ -135,6 +136,12 @@ Func_setvJoyButton := DllCall("GetProcAddress", "Ptr", AOTModule, "AStr", "setvJ
 Func_sendRawMouseMove := DllCall("GetProcAddress", "Ptr", AOTModule, "AStr", "sendRawMouseMove", "Ptr")
 Func_sendRawMouseButtonDown := DllCall("GetProcAddress", "Ptr", AOTModule, "AStr", "sendRawMouseButtonDown", "Ptr")
 Func_sendRawMouseButtonUp := DllCall("GetProcAddress", "Ptr", AOTModule, "AStr", "sendRawMouseButtonUp", "Ptr")
+
+Detect() 
+{
+	global Func_detect
+	return DllCall(Func_detect, "UInt")
+}
 
 InitOculus()
 {
